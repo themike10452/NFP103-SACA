@@ -1,0 +1,6 @@
+.canvas-holder {
+    -fx-background-image: url(/Resources/Images/worldmap.jpg);
+    -fx-background-repeat: stretch;
+    -fx-background-size: 1600 900;
+    -fx-background-position: center center;
+}

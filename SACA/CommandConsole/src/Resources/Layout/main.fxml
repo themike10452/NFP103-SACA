@@ -1,0 +1,13 @@
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<BorderPane xmlns:fx="http://javafx.com/fxml" stylesheets="/Resources/Styles/main.css">
+    <center>
+        <ScrollPane fitToHeight="true" fitToWidth="true">
+            <StackPane styleClass="canvas-holder">
+                <Canvas fx:id="m_Canvas" width="1600" height="900"/>
+            </StackPane>
+        </ScrollPane>
+    </center>
+</BorderPane>

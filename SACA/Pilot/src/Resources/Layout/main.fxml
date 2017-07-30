@@ -1,0 +1,31 @@
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+<BorderPane xmlns:fx="http://javafx.com/fxml" stylesheets="/Resources/Styles/main.css">
+    <center>
+        <ScrollPane fitToHeight="true" fitToWidth="true">
+            <StackPane styleClass="canvas-holder">
+                <Canvas fx:id="m_Canvas" width="1600" height="900"/>
+            </StackPane>
+        </ScrollPane>
+    </center>
+    <right>
+        <VBox alignment="TOP_CENTER" prefWidth="200">
+            <padding>
+                <Insets left="10" top="10" right="10" bottom="10"/>
+            </padding>
+            <!--<Button fx:id="btnDeploy" text="Deploy" prefWidth="150"/>-->
+            <GridPane hgap="10" vgap="10">
+                <padding><Insets top="10"/></padding>
+                <!-- Velocity -->
+                <Text text="Velocity" style="-fx-font-weight: bold" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <Text fx:id="m_TextVelocity" text="--" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                <!-- Altitude -->
+                <Text text="Altitude" style="-fx-font-weight: bold" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <Text fx:id="m_TextAltitude" text="--" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+            </GridPane>
+        </VBox>
+    </right>
+</BorderPane>

@@ -1,0 +1,10 @@
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+<GridPane xmlns:fx="http://javafx.com/fxml" hgap="30" vgap="20">
+    <padding><Insets left="30" top="30" right="30" bottom="30"/></padding>
+    <Text text="Piloting" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+    <Text fx:id="m_TextPilotingPort" text="--" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+    <Text text="Monitoring" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+    <Text fx:id="m_TextMonitoringPort" text="--" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+</GridPane>
