@@ -222,27 +222,20 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
         double xyRotAngle = Math.toDegrees(Math.atan2(direction.Y, direction.X));
 
         ctx.save();
-        ctx.translate(drawPosition.X, drawPosition.Y);
+            ctx.translate(drawPosition.X, drawPosition.Y);
 
-        ctx.setFill(Color.BLACK);
-        ctx.fillRect(-25, 25, 34, 12);
+            ctx.setFill(Color.BLACK);
+            ctx.fillRect(-25, 25, 34, 12);
 
-        ctx.setFont(Font.font("Consolas", 10));
-        ctx.setFill(Color.WHITE);
-        ctx.fillText(airplane.getId(), -23.0, 34.0);
+            ctx.setFont(Font.font("Consolas", 10));
+            ctx.setFill(Color.WHITE);
+            ctx.fillText(airplane.getId(), -23.0, 34.0);
 
-        ctx.rotate(xyRotAngle);
+            ctx.rotate(xyRotAngle);
 
-        //TODO remove this
-        /*m_Gfx.setStroke(Color.RED);
-        m_Gfx.setLineWidth(2.0f);
-        m_Gfx.strokeLine(0.0, 0.0, 50.0, 0.0);*/
-
-        ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
-        ctx.drawImage(Resources.Images.airplane, -25, -25, 50.0, 50.0);
-        Airplane.class.getResource("");
-        ctx.setEffect(null);
-
+            ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
+            ctx.drawImage(Resources.Images.airplane, -25, -25, 50.0, 50.0);
+            ctx.setEffect(null);
         ctx.restore();
     }
 
