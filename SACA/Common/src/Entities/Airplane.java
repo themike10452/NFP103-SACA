@@ -4,6 +4,7 @@ import FMath.Vector3;
 import Net.TcpConnection;
 import UI.Viewport;
 import Utils.Chrono;
+import Utils.StringUtils;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
@@ -169,7 +170,12 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
 
     @Override
     public String toString() {
-        return String.format("pln::<%s;%s;%s;%f>", m_Id, m_Position, m_Direction, m_Speed);
+        return String.format("pln::<%s;%s;%s;%f>",
+                m_Id,
+                StringUtils.toBase64(m_Position.toString()),
+                StringUtils.toBase64(m_Direction.toString()),
+                m_Speed
+        );
     }
 
     @Override
@@ -188,8 +194,8 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
 
         if (m.matches()) {
             return new Airplane(m.group(1))
-                    .setPosition(Vector3.fromString(m.group(2)))
-                    .setDirection(Vector3.fromString(m.group(3)))
+                    .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
+                    .setDirection(Vector3.fromString(StringUtils.fromBase64(m.group(3))))
                     .setSpeed(Float.parseFloat(m.group(4)));
         }
 
@@ -205,8 +211,8 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
 
         while (m.find()) {
             Airplane airplane = new Airplane(m.group(1))
-                    .setPosition(Vector3.fromString(m.group(2)))
-                    .setDirection(Vector3.fromString(m.group(3)))
+                    .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
+                    .setDirection(Vector3.fromString(StringUtils.fromBase64(m.group(3))))
                     .setSpeed(Float.parseFloat(m.group(4)));
 
             result.add(airplane);

@@ -90,7 +90,7 @@ public class Vector3 implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("vec3::<%f|%f|%f>", X, Y, Z);
+        return String.format("vec3::<%f;%f;%f>", X, Y, Z);
     }
 
     public static Vector3 add(Vector3 lhs, Vector3 rhs) {
@@ -102,7 +102,7 @@ public class Vector3 implements Serializable {
     }
 
     public static Vector3 fromString(String str) {
-        Pattern p = Pattern.compile("vec3::<(-?\\d+(?:\\.\\d+)?)\\|(-?\\d+(?:\\.\\d+)?)\\|(-?\\d+(?:\\.\\d+)?)>");
+        Pattern p = Pattern.compile("vec3::<(-?\\d+(?:\\.\\d+)?);(-?\\d+(?:\\.\\d+)?);(-?\\d+(?:\\.\\d+)?)>");
         Matcher m = p.matcher(str);
         if (m.matches()) {
             return new Vector3(
