@@ -1,6 +1,8 @@
 package Entities;
 
 import FMath.Vector3;
+import UI.Viewport;
+import javafx.scene.canvas.GraphicsContext;
 
 /**
  * Created by Mike on 7/27/2017.
@@ -25,6 +27,10 @@ public interface IAirplane {
 
     float getAltitude();
 
+    public boolean hit(double x, double y);
+
     String toString();
+
+    public void draw(GraphicsContext ctx, Viewport viewport);
 
 }

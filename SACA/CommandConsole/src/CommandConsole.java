@@ -126,7 +126,7 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
             m_Gfx.clearRect(0.0, 0.0, m_Viewport.Width, m_Viewport.Height);
 
             for (IAirplane ap : m_Airplanes) {
-                Airplane.draw(ap, m_Gfx, m_Viewport);
+                ap.draw(m_Gfx, m_Viewport);
             }
         }
     }

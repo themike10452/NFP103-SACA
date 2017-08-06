@@ -30,9 +30,6 @@ import java.io.IOException;
  */
 public class Pilot extends Application implements EventHandler<KeyEvent> {
 
-    private static final float Scale = 0.01f;
-    private static final float CanvasPadding = 25.0f;
-
     private Airplane m_Airplane;
     private ViewController m_ViewController;
 
@@ -116,7 +113,6 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
         }
 
         m_Airplane.takeOff();
-
         m_AnimationTimer.start();
     }
 
@@ -135,7 +131,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
         private boolean m_IsReady;
 
         private ViewController() {
-            m_Viewport = new Viewport(0, 0, CanvasPadding, Scale);
+            m_Viewport = new Viewport(0, 0);
             m_AltmViewport = new Viewport(180, 180, 20, 1);
         }
 
@@ -149,9 +145,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
             //TODO revise this
             m_Canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
                 float x = (float) event.getX(), y = (float) event.getY();
-                Vector3 newPosition = new Vector3(x, y, 0).add(-CanvasPadding, -CanvasPadding, 0.0f);
-                newPosition.set(Vector3.multiply(newPosition, 1 / Scale));
-                m_Airplane.getPosition().setX(newPosition.X).setY(newPosition.Y);
+                m_Airplane.getPosition().setX(x).setY(y);
             });
 
             m_IsReady = true;
@@ -164,7 +158,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
             m_TextAltitude.setText(Float.toString(m_Airplane.getPosition().Z));
 
             m_Gfx.clearRect(0, 0, m_Viewport.Width, m_Viewport.Height);
-            Airplane.draw(m_Airplane, m_Gfx, m_Viewport);
+            m_Airplane.draw(m_Gfx, m_Viewport);
 
             float halfW = m_AltmViewport.Width / 2;
             float halfH = m_AltmViewport.Height / 2;

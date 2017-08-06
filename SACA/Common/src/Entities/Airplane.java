@@ -8,6 +8,7 @@ import Utils.StringUtils;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     private boolean m_IsFlying;
 
     private TcpConnection m_Connection;
+    private Rectangle m_Rect;
 
     private Thread m_WorkerThread = new Thread() {
         @Override
@@ -61,6 +63,7 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
         m_Id = "AP-" + new Random(System.currentTimeMillis()).nextInt(100);
         m_IsFlying = false;
 
+        m_Rect = new Rectangle(50, 50);
         m_Connection = null;
     }
 
@@ -118,6 +121,11 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
         return m_Position.Z;
     }
 
+    @Override
+    public boolean hit(double x, double y) {
+        return m_Rect.contains(x, y);
+    }
+
     public void takeOff() {
         m_IsFlying = true;
         m_WorkerThread.start();
@@ -165,7 +173,9 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     }
 
     private void update(long delta) {
-        m_Position.add(Vector3.multiply(m_Direction, m_Speed * delta));
+        m_Position.add(Vector3.multiply(m_Direction, m_Speed * (delta / 1000.0f)));
+        m_Rect.setX(m_Position.X - m_Rect.getWidth() / 2);
+        m_Rect.setY(m_Position.Y - m_Rect.getHeight() / 2);
     }
 
     @Override
@@ -186,6 +196,30 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     @Override
     public void onCloseConnection(TcpConnection connection) {
         // do nothing
+    }
+
+    @Override
+    public void draw(GraphicsContext ctx, Viewport viewport) {
+        double xyRotAngle = Math.toDegrees(Math.atan2(m_Direction.Y, m_Direction.X));
+
+        ctx.save();
+            ctx.translate(m_Rect.getX(), m_Rect.getY());
+
+            ctx.setFill(Color.BLACK);
+            ctx.fillRect(0, m_Rect.getHeight(), m_Rect.getWidth(), 12);
+
+            ctx.setFont(Font.font("Consolas", 10));
+            ctx.setFill(Color.WHITE);
+            ctx.fillText(m_Id, 4.0, 59.0);
+
+            ctx.translate(m_Rect.getWidth() / 2, m_Rect.getHeight() / 2);
+            ctx.rotate(xyRotAngle);
+            ctx.translate(-m_Rect.getWidth() / 2, -m_Rect.getHeight() / 2);
+
+            ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
+            ctx.drawImage(Resources.Images.airplane, 0, 0, m_Rect.getWidth(), m_Rect.getHeight());
+            ctx.setEffect(null);
+        ctx.restore();
     }
 
     public static Airplane fromString(String str) {
@@ -219,30 +253,6 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
         }
 
         return result;
-    }
-
-    public static void draw(IAirplane airplane, GraphicsContext ctx, Viewport viewport) {
-        Vector3 direction = airplane.getDirection();
-        Vector3 position = airplane.getPosition();
-        Vector3 drawPosition = Vector3.multiply(position, viewport.Scale).add(viewport.Padding, viewport.Padding, 0.0f);
-        double xyRotAngle = Math.toDegrees(Math.atan2(direction.Y, direction.X));
-
-        ctx.save();
-            ctx.translate(drawPosition.X, drawPosition.Y);
-
-            ctx.setFill(Color.BLACK);
-            ctx.fillRect(-25, 25, 34, 12);
-
-            ctx.setFont(Font.font("Consolas", 10));
-            ctx.setFill(Color.WHITE);
-            ctx.fillText(airplane.getId(), -23.0, 34.0);
-
-            ctx.rotate(xyRotAngle);
-
-            ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
-            ctx.drawImage(Resources.Images.airplane, -25, -25, 50.0, 50.0);
-            ctx.setEffect(null);
-        ctx.restore();
     }
 
 }
