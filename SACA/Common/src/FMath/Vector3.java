@@ -1,5 +1,7 @@
 package FMath;
 
+import Utils.RuntimeUtils;
+
 import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -59,14 +61,6 @@ public class Vector3 implements Serializable {
         return this;
     }
 
-    public Vector3 add(float deltaX, float deltaY, float deltaZ) {
-        X += deltaX;
-        Y += deltaY;
-        Z += deltaZ;
-
-        return this;
-    }
-
     public Vector3 add(Vector3 other) {
         X += other.X;
         Y += other.Y;
@@ -75,12 +69,17 @@ public class Vector3 implements Serializable {
         return this;
     }
 
-    public float Length() {
+    public Vector3 subtract(Vector3 other) {
+        add(other.getNegated());
+        return this;
+    }
+
+    public float getLength() {
         return (float)Math.sqrt(X*X + Y*Y + Z*Z);
     }
 
     public Vector3 getNormalized() {
-        float len = Length();
+        float len = getLength();
 
         if (len == 0)
             return this;
@@ -88,17 +87,39 @@ public class Vector3 implements Serializable {
         return new Vector3(X / len, Y / len, Z / len);
     }
 
+    public Vector3 getNegated() {
+        return new Vector3(-X, -Y, -Z);
+    }
+
     @Override
     public String toString() {
         return String.format("vec3::<%f;%f;%f>", X, Y, Z);
     }
 
-    public static Vector3 add(Vector3 lhs, Vector3 rhs) {
-        return new Vector3(lhs.X + rhs.X, lhs.Y + rhs.Y, lhs.Z + rhs.Z);
+    @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+    @Override
+    public boolean equals(Object other) {
+        Vector3 ov = RuntimeUtils.safeCast(other, Vector3.class);
+        return ov != null &&
+                ov.X == X &&
+                ov.Y == Y &&
+                ov.Z == Z;
+    }
+
+    public static Vector3 add(Vector3 v1, Vector3 v2) {
+        return new Vector3(v1.X + v2.X, v1.Y + v2.Y, v1.Z + v2.Z);
+    }
+
+    public static Vector3 subtract(Vector3 lhs, Vector3 rhs) {
+        return new Vector3(lhs.X - rhs.X, lhs.Y - rhs.Y, lhs.Z - rhs.Z);
     }
 
     public static Vector3 multiply(Vector3 v, float scale) {
         return new Vector3(v.X * scale, v.Y * scale, v.Z * scale);
+    }
+
+    public static float dot(Vector3 v1, Vector3 v2) {
+        return v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z;
     }
 
     public static Vector3 fromString(String str) {
