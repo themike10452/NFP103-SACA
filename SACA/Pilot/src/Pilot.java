@@ -126,9 +126,10 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
 
     @Override
     public void onReceiveMessage(TcpConnection connection, String message) {
-        System.out.println(message);
+        m_ViewController.onReceiveMessage(message);
     }
 
+    @SuppressWarnings("Duplicates")
     @Override
     public void onCloseConnection(TcpConnection connection) {
         if (!m_IsFlying) return;
@@ -265,6 +266,11 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
             m_Gfx.restore();
 
             m_Gfx.setEffect(null);
+        }
+
+        private void onReceiveMessage(String message) {
+            m_TextArea.appendText(message);
+            m_TextArea.appendText("\n");
         }
 
         @Override

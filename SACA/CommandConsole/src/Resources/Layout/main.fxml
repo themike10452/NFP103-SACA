@@ -28,9 +28,7 @@
                     <Button fx:id="m_BtnSend" prefWidth="72" text="Send"/>
                 </right>
             </BorderPane>
-            <ScrollPane prefHeight="100" fitToWidth="true">
-                <TextArea editable="false" fx:id="m_TextArea"/>
-            </ScrollPane>
+            <TextArea fx:id="m_TextArea" editable="false" prefHeight="100"/>
         </VBox>
     </bottom>
 </BorderPane>

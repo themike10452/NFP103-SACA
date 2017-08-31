@@ -12,8 +12,6 @@
         </ScrollPane>
     </center>
     <bottom>
-        <ScrollPane prefHeight="100" fitToWidth="true">
-            <TextArea editable="false" fx:id="m_TextArea"/>
-        </ScrollPane>
+        <TextArea editable="false" fx:id="m_TextArea" prefHeight="100"/>
     </bottom>
 </BorderPane>

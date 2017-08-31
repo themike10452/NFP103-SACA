@@ -202,17 +202,8 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
                 }
             });
 
-            m_BtnSend.setOnMouseClicked(event -> {
-                String text = m_TextInput.getText();
-                if (!StringUtils.isNullOrWhitespace(text)) {
-                    String apId = m_ComboAirplanes.getSelectionModel().getSelectedItem();
-                    if (!StringUtils.isNullOrEmpty(apId)) {
-                        m_Connection.send(new Message(Message.HINT_COMMAND, text, null, apId).toString());
-                        m_TextInput.clear();
-                        m_TextArea.appendText(String.format("%s\n", text));
-                    }
-                }
-            });
+            m_BtnSend.setOnMouseClicked(event -> sendMessage());
+            m_TextInput.setOnAction(event -> sendMessage());
         }
 
         private void update() {
@@ -222,6 +213,19 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
             for (IAirplane ap : m_Airplanes) {
                 Airplane.draw(m_Gfx, ap);
+            }
+        }
+
+        private void sendMessage() {
+            String text = m_TextInput.getText();
+            if (!StringUtils.isNullOrWhitespace(text)) {
+                String apId = m_ComboAirplanes.getSelectionModel().getSelectedItem();
+                if (!StringUtils.isNullOrEmpty(apId)) {
+                    m_Connection.send(new Message(Message.HINT_COMMAND, text, null, apId).toString());
+                    m_TextInput.clear();
+                    m_TextArea.appendText(text);
+                    m_TextArea.appendText("\n");
+                }
             }
         }
 
