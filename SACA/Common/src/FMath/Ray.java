@@ -80,11 +80,11 @@ public class Ray {
             return Float.MAX_VALUE;
         }
 
-        final float f1 = (-p * r + q * t) / (s * t - p * p);
-        final float f2 = (p * q - r * s) / (s * t - p * p);
+        final float fact1 = (-p * r + q * t) / (s * t - p * p);
+        final float fact2 = (p * q - r * s) / (s * t - p * p);
 
-        final Vector3 np1 = Vector3.add(p1, Vector3.multiply(d1, f1)); // nearest point on ray1 to ray2
-        final Vector3 np2 = Vector3.add(p2, Vector3.multiply(d2, f2)); // nearest point on ray2 to ray1
+        final Vector3 np1 = Vector3.add(p1, Vector3.multiply(d1, fact1)); // nearest point on ray1 to ray2
+        final Vector3 np2 = Vector3.add(p2, Vector3.multiply(d2, fact2)); // nearest point on ray2 to ray1
 
         return Vector3.subtract(np2, np1).getLength();
     }

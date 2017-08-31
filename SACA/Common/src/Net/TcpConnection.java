@@ -72,19 +72,19 @@ public class TcpConnection extends Observable {
 
     public void close() {
         try {
-            if (m_Socket != null) {
-                synchronized (m_Mutex) {
-                    m_Socket.close();
-                    m_Socket = null;
-                    m_Mutex.notify();
-                }
+            if (m_Socket == null) return;
 
-                if (Thread.currentThread().getId() != m_ReadThread.getId()) {
-                    m_ReadThread.join();
-                    m_WriteThread.join();
-                    m_PingThread.interrupt();
-                    m_PingThread.join();
-                }
+            synchronized (m_Mutex) {
+                m_Socket.close();
+                m_Socket = null;
+                m_Mutex.notify();
+            }
+
+            if (Thread.currentThread() != m_ReadThread) {
+                m_ReadThread.join();
+                m_WriteThread.join();
+                m_PingThread.interrupt();
+                m_PingThread.join();
             }
         }
         catch (Exception e) {
@@ -102,6 +102,7 @@ public class TcpConnection extends Observable {
         private final BufferedReader m_Reader;
 
         private ReaderThread(InputStream inputStream) {
+            super("Tcp Connection Stream Reader");
             m_Reader = new BufferedReader(new InputStreamReader(inputStream));
         }
 
@@ -130,6 +131,8 @@ public class TcpConnection extends Observable {
                     // do nothing
                 }
                 finally {
+                    close();
+
                     for (EventHandler handler : m_EventHandlers) {
                         handler.onCloseConnection(TcpConnection.this);
                     }
@@ -143,14 +146,15 @@ public class TcpConnection extends Observable {
         private final PrintWriter m_Writer;
 
         private WriterThread(OutputStream outputStream) {
+            super("Tcp Connection Stream Writer");
             m_Writer = new PrintWriter(outputStream);
         }
 
         @Override
         public void run() {
             try {
-                while (true) {
-                    synchronized (m_Mutex) {
+                synchronized (m_Mutex) {
+                    while (true) {
                         try {
                             if (m_MessageQueue.isEmpty())
                                 m_Mutex.wait();
@@ -176,6 +180,10 @@ public class TcpConnection extends Observable {
     }
 
     private class PingThread extends Thread {
+
+        private PingThread() {
+            super("Tcp Connection Ping");
+        }
 
         @Override
         public void run() {

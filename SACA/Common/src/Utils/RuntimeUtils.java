@@ -12,4 +12,8 @@ public class RuntimeUtils {
             return null;
     }
 
+    public static boolean isFlagSet(int flags, int flag) {
+        return (flags & flag) != 0;
+    }
+
 }

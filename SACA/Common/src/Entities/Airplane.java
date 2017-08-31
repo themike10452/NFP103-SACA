@@ -1,12 +1,16 @@
 package Entities;
 
+import FMath.FMath;
+import FMath.Ray;
+import FMath.Rotator;
 import FMath.Vector3;
 import Net.TcpConnection;
-import UI.Viewport;
 import Utils.Chrono;
+import Utils.RuntimeUtils;
 import Utils.StringUtils;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -18,13 +22,26 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static Constants.Decimals.AIRPLANE_MAX_PITCH;
+import static Constants.Decimals.MAP_SCALE;
+
 /**
  * Created by Mike on 7/6/2017.
  */
-public class Airplane implements IAirplane, TcpConnection.EventHandler {
+public class Airplane implements IAirplane {
+
+    public static final int FLAG_WARN   = 1 << 0;
+    public static final int FLAG_PANIC  = 1 << 1;
+    public static final int FLAG_HIGHLIGHTED  = 1 << 2;
+
+    private static final String RegexPattern = "pln::<([^;]+);([^;]+);(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+)?)>";
 
     private Vector3 m_Position;
     private Vector3 m_Direction;
+
+    private float m_Pitch;
+    private float m_Yaw;
+    private float m_Roll;
     private float m_Speed;
 
     private String m_Id;
@@ -57,14 +74,19 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
 
     public Airplane() {
         m_Position = new Vector3();
-        m_Direction = new Vector3(1, 1, 0).getNormalized();
-        m_Speed = 1.0f;
+        m_Roll = 0.0f;
+        m_Pitch = 0.0f;
+        m_Yaw = 0.0f;
+        m_Speed = 0.0f;
 
         m_Id = "AP-" + new Random(System.currentTimeMillis()).nextInt(100);
         m_IsFlying = false;
 
-        m_Rect = new Rectangle(50, 50);
+        m_Rect = new Rectangle(25, 25);
         m_Connection = null;
+
+        updateBoundsRect();
+        updateDirection();
     }
 
     private Airplane(String id) {
@@ -74,13 +96,10 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
 
     @Override
     public Airplane setPosition(Vector3 position) {
-        m_Position.set(position);
-        return this;
-    }
-
-    @Override
-    public Airplane setDirection(Vector3 direction) {
-        m_Direction.set(direction);
+        m_Position.setX(position.X);
+        m_Position.setY(position.Y);
+        setAltitude(position.Z);
+        updateBoundsRect();
         return this;
     }
 
@@ -97,18 +116,63 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     }
 
     @Override
+    public IAirplane setPitch(float pitch) {
+        // limit pitch angle
+        if (pitch > AIRPLANE_MAX_PITCH)
+            pitch = AIRPLANE_MAX_PITCH;
+
+        if (pitch < -AIRPLANE_MAX_PITCH)
+            pitch = -AIRPLANE_MAX_PITCH;
+
+        m_Pitch = pitch;
+        updateDirection();
+        return this;
+    }
+
+    @Override
+    public IAirplane setYaw(float yaw) {
+        m_Yaw = FMath.clampAngle(yaw);
+        updateDirection();
+        return this;
+    }
+
+    @Override
+    public IAirplane setRoll(float roll) {
+        // limit roll angle
+        if (roll > Constants.Decimals.AIRPLANE_MAX_ROLL)
+            roll = Constants.Decimals.AIRPLANE_MAX_ROLL;
+
+        if (roll < -Constants.Decimals.AIRPLANE_MAX_ROLL)
+            roll = -Constants.Decimals.AIRPLANE_MAX_ROLL;
+
+        m_Roll = roll;
+        updateDirection();
+        return this;
+    }
+
+    @Override
     public String getId() {
         return m_Id;
     }
 
     @Override
     public Vector3 getPosition() {
-        return m_Position;
+        return new Vector3(m_Position.X, m_Position.Y, m_Position.Z);
+    }
+
+    @Override
+    public Vector3 getXyPosition() {
+        return new Vector3(m_Position.X, m_Position.Y, 0.0f);
     }
 
     @Override
     public Vector3 getDirection() {
-        return m_Direction;
+        return new Vector3(m_Direction.X, m_Direction.Y, m_Direction.Z);
+    }
+
+    @Override
+    public Ray getRay() {
+        return new Ray(getPosition(), getDirection());
     }
 
     @Override
@@ -122,8 +186,40 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     }
 
     @Override
+    public float getPitch() {
+        return m_Pitch;
+    }
+
+    @Override
+    public float getYaw() {
+        return m_Yaw;
+    }
+
+    @Override
+    public float getRoll() {
+        return m_Roll;
+    }
+
+    @Override
+    public Rectangle getBoundsRect() {
+        return new Rectangle
+        (
+            m_Rect.getX(),
+            m_Rect.getY(),
+            m_Rect.getWidth(),
+            m_Rect.getHeight()
+        );
+    }
+
+    @Override
     public boolean hit(double x, double y) {
         return m_Rect.contains(x, y);
+    }
+
+    public void addConnectionEventHandler(TcpConnection.EventHandler handler) {
+        if (m_Connection == null) return;
+
+        m_Connection.addEventHandler(handler);
     }
 
     public void takeOff() {
@@ -156,7 +252,6 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
         if (m_Connection != null) return;
 
         m_Connection = new TcpConnection("127.0.0.1", Constants.Integers.PILOTING_PORT);
-        m_Connection.addEventHandler(this);
     }
 
     public void closeConnection() throws IOException {
@@ -173,64 +268,82 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     }
 
     private void update(long delta) {
-        m_Position.add(Vector3.multiply(m_Direction, m_Speed * (delta / 1000.0f)));
-        m_Rect.setX(m_Position.X - m_Rect.getWidth() / 2);
-        m_Rect.setY(m_Position.Y - m_Rect.getHeight() / 2);
+        m_Position.add(Vector3.multiply(m_Direction, (m_Speed / 3600) * (delta / 1000.0f)));
+        updateBoundsRect();
+    }
+
+    private void updateDirection() {
+        m_Direction = new Rotator(m_Roll, m_Pitch, m_Yaw).getRotated(new Vector3(1.0f, 0.0f, 0.0f)).getNormalized();
+    }
+
+    private void updateBoundsRect() {
+        m_Rect.setX(m_Position.X * MAP_SCALE - m_Rect.getWidth() / 2);
+        m_Rect.setY(m_Position.Y * MAP_SCALE - m_Rect.getHeight() / 2);
     }
 
     @Override
     public String toString() {
-        return String.format("pln::<%s;%s;%s;%f>",
+        return String.format("pln::<%s;%s;%f;%f;%f;%f>",
                 m_Id,
                 StringUtils.toBase64(m_Position.toString()),
-                StringUtils.toBase64(m_Direction.toString()),
+                m_Roll,
+                m_Pitch,
+                m_Yaw,
                 m_Speed
         );
     }
 
-    @Override
-    public void onReceiveMessage(TcpConnection connection, String message) {
-        //TODO handle received messages
-    }
+    public static void draw(GraphicsContext ctx, IAirplane airplane, int flags) {
+        final Vector3 direction = airplane.getDirection();
+        final String apId = airplane.getId();
+        final Rectangle rect = airplane.getBoundsRect();
 
-    @Override
-    public void onCloseConnection(TcpConnection connection) {
-        // do nothing
-    }
+        final Image img;
+        if (RuntimeUtils.isFlagSet(flags, FLAG_PANIC)) {
+            img = Resources.Images.airplane_danger;
+        }
+        else if (RuntimeUtils.isFlagSet(flags, FLAG_WARN)) {
+            img = Resources.Images.airplane_warn;
+        }
+        else {
+            img = Resources.Images.airplane;
+        }
 
-    @Override
-    public void draw(GraphicsContext ctx, Viewport viewport) {
-        double xyRotAngle = Math.toDegrees(Math.atan2(m_Direction.Y, m_Direction.X));
+        final double xyRotAngle = Math.toDegrees(Math.atan2(direction.Y, direction.X));
 
         ctx.save();
-            ctx.translate(m_Rect.getX(), m_Rect.getY());
+            ctx.translate(rect.getX(), rect.getY());
 
             ctx.setFill(Color.BLACK);
-            ctx.fillRect(0, m_Rect.getHeight(), m_Rect.getWidth(), 12);
+            ctx.fillRect(-5, rect.getHeight(), rect.getWidth() + 5, 12);
 
             ctx.setFont(Font.font("Consolas", 10));
             ctx.setFill(Color.WHITE);
-            ctx.fillText(m_Id, 4.0, 59.0);
+            ctx.fillText(apId, -4.0, rect.getHeight() + 9.0);
 
-            ctx.translate(m_Rect.getWidth() / 2, m_Rect.getHeight() / 2);
+            ctx.translate(rect.getWidth() / 2, rect.getHeight() / 2);
             ctx.rotate(xyRotAngle);
-            ctx.translate(-m_Rect.getWidth() / 2, -m_Rect.getHeight() / 2);
+            ctx.translate(-rect.getWidth() / 2, -rect.getHeight() / 2);
 
-            ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
-            ctx.drawImage(Resources.Images.airplane, 0, 0, m_Rect.getWidth(), m_Rect.getHeight());
+            final Color shadowColor = RuntimeUtils.isFlagSet(flags, FLAG_HIGHLIGHTED) ? Color.YELLOW : Color.BLACK;
+
+            ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, shadowColor));
+            ctx.drawImage(img, 0, 0, rect.getWidth(), rect.getHeight());
             ctx.setEffect(null);
         ctx.restore();
     }
 
     public static Airplane fromString(String str) {
-        Pattern p = Pattern.compile("pln::<([^;]+);([^;]+);([^;]+);(\\d+(?:\\.\\d+)?)>");
+        Pattern p = Pattern.compile(RegexPattern);
         Matcher m = p.matcher(str);
 
         if (m.matches()) {
-            return new Airplane(m.group(1))
+            return (Airplane) new Airplane(m.group(1))
                     .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
-                    .setDirection(Vector3.fromString(StringUtils.fromBase64(m.group(3))))
-                    .setSpeed(Float.parseFloat(m.group(4)));
+                    .setRoll(Float.parseFloat(m.group(3)))
+                    .setPitch(Float.parseFloat(m.group(4)))
+                    .setYaw(Float.parseFloat(m.group(5)))
+                    .setSpeed(Float.parseFloat(m.group(6)));
         }
 
         System.err.println("Invalid serialized Airplane: " + str);
@@ -238,16 +351,18 @@ public class Airplane implements IAirplane, TcpConnection.EventHandler {
     }
 
     public static List<Airplane> fromStringMultiple(String str) {
-        Pattern p = Pattern.compile("pln::<([^;]+);([^;]+);([^;]+);(\\d+(?:\\.\\d+)?)>");
+        Pattern p = Pattern.compile(RegexPattern);
         Matcher m = p.matcher(str);
 
         List<Airplane> result = new ArrayList<>();
 
         while (m.find()) {
-            Airplane airplane = new Airplane(m.group(1))
+            Airplane airplane = (Airplane) new Airplane(m.group(1))
                     .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
-                    .setDirection(Vector3.fromString(StringUtils.fromBase64(m.group(3))))
-                    .setSpeed(Float.parseFloat(m.group(4)));
+                    .setRoll(Float.parseFloat(m.group(3)))
+                    .setPitch(Float.parseFloat(m.group(4)))
+                    .setYaw(Float.parseFloat(m.group(5)))
+                    .setSpeed(Float.parseFloat(m.group(6)));
 
             result.add(airplane);
         }

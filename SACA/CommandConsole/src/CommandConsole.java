@@ -1,21 +1,32 @@
 import Constants.Integers;
 import Entities.Airplane;
 import Entities.IAirplane;
+import Net.Message;
 import Net.TcpConnection;
 import UI.Viewport;
+import Utils.RuntimeUtils;
+import Utils.StringUtils;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Alert;
+import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
 import java.net.ConnectException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -23,17 +34,20 @@ import java.util.List;
  */
 public class CommandConsole extends Application implements TcpConnection.EventHandler {
 
-    private static final float Scale = 0.01f;
     private static final float CanvasPadding = 25.0f;
 
     public static void main(String[] args) {
         launch(args);
     }
 
-    private final Object m_Mutex = new Object();
+    private static final Object m_Mutex = new Object();
+
     private TcpConnection m_Connection;
-    private List<IAirplane> m_Airplanes;
-    private ViewController m_ViewController;
+    private final List<IAirplane> m_Airplanes;
+    private final ObservableList<String> m_LockedAirplanes;
+    private final HashMap<String, Integer> m_Collisions;
+    private final ViewController m_ViewController;
+    private boolean m_IsRunning;
 
     private final AnimationTimer m_AnimationTimer = new AnimationTimer() {
         @Override
@@ -46,7 +60,10 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
     public CommandConsole() {
         m_Airplanes = new ArrayList<>();
+        m_LockedAirplanes = FXCollections.observableArrayList();
+        m_Collisions = new HashMap<>();
         m_ViewController = new ViewController();
+        m_IsRunning = false;
     }
 
     @Override
@@ -54,7 +71,7 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
         primaryStage.setTitle("Command Console");
         primaryStage.setResizable(true);
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/Resources/Layout/main.fxml"));
+        final FXMLLoader loader = new FXMLLoader(getClass().getResource("/Resources/Layout/main.fxml"));
         loader.setController(m_ViewController);
 
         final Pane root = loader.load();
@@ -69,15 +86,20 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
             m_AnimationTimer.start();
         }
         catch (ConnectException ce) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
+            final Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Connection problem");
             alert.setContentText("Failed to establish connection with SACA controller");
             alert.show();
+            return;
         }
+
+        m_LockedAirplanes.addListener(m_ViewController);
+        m_IsRunning = true;
     }
 
     @Override
     public void stop() throws Exception {
+        m_IsRunning = false;
         m_AnimationTimer.stop();
         // connection is null when connection to SACA fails on start
         if (m_Connection != null) {
@@ -88,27 +110,83 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
     @Override
     public void onReceiveMessage(TcpConnection connection, String message) {
+        if (!m_IsRunning) return;
+
         synchronized (m_Mutex) {
-            m_Airplanes.clear();
-            m_Airplanes.addAll(Airplane.fromStringMultiple(message));
+            if (Message.isMessage(message)) {
+                final Message msg = Message.fromString(message);
+                assert msg != null;
+
+                if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_ALERT) &&
+                    !StringUtils.isNullOrWhitespace(msg.Data)) {
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Controller message");
+                        alert.setContentText(msg.Data);
+                        alert.show();
+                    });
+                }
+                else if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_COLLISION_DETECTION_LIST)) {
+                    m_Collisions.clear();
+                    Arrays.stream(msg.Data.split("\\|")).distinct().forEach(entry -> {
+                        String parts[] = entry.split(";");
+                        if (parts.length == 3) {
+                            int existing = m_Collisions.getOrDefault(parts[0], 0);
+                            m_Collisions.put(parts[0], existing | Integer.parseInt(parts[2]));
+                            m_Collisions.put(parts[1], existing | Integer.parseInt(parts[2]));
+                        }
+                    });
+                }
+                else if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_AIRPLANE_LIST)) {
+                    m_Airplanes.clear();
+                    m_Airplanes.addAll(Airplane.fromStringMultiple(msg.Data));
+                    // sort by altitude in desc order
+                    m_Airplanes.sort((a1, a2) -> (int) ((a1.getAltitude() - a2.getAltitude()) * 1000));
+                }
+
+                if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_LOCK_ACK)) {
+                    if (!m_LockedAirplanes.contains(msg.To)) {
+                        m_LockedAirplanes.add(msg.To);
+                    }
+                }
+                else if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_RELEASE_ACK)) {
+                    m_LockedAirplanes.remove(msg.To);
+                }
+            }
         }
     }
 
+    @SuppressWarnings("Duplicates")
     @Override
     public void onCloseConnection(TcpConnection connection) {
+        if (!m_IsRunning) return;
 
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("SACA Connection");
+            alert.setContentText("Connection lost with SACA Controller");
+            alert.show();
+        });
     }
 
-    private class ViewController {
+    private class ViewController implements ListChangeListener<String> {
         @FXML
         Canvas m_Canvas;
+        @FXML
+        TextArea m_TextArea;
+        @FXML
+        TextField m_TextInput;
+        @FXML
+        Button m_BtnSend;
+        @FXML
+        ComboBox<String> m_ComboAirplanes;
 
         GraphicsContext m_Gfx;
         Viewport m_Viewport;
         boolean m_IsReady;
 
         private ViewController() {
-            m_Viewport = new Viewport(0, 0, CanvasPadding, Scale);
+            m_Viewport = new Viewport(0, 0, CanvasPadding);
             m_IsReady = false;
         }
 
@@ -118,6 +196,38 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
             m_Viewport.Width = (float) m_Canvas.getWidth();
             m_Viewport.Height = (float) m_Canvas.getHeight();
             m_IsReady = true;
+
+            //todo ap control
+            m_Canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+                for (IAirplane ap : m_Airplanes) {
+                    if (ap.hit(event.getX(), event.getY())) {
+                        if (event.getButton() == MouseButton.PRIMARY) {
+                            m_Connection.send(new Message(Message.HINT_LOCK, null, null, ap.getId()).toString());
+                        }
+                        else if (event.getButton() == MouseButton.SECONDARY) {
+                            m_Connection.send(new Message(Message.HINT_RELEASE, null, null, ap.getId()).toString());
+                        }
+                        else if (event.getButton() == MouseButton.MIDDLE) {
+                            if (m_ComboAirplanes.getItems().contains(ap.getId())) {
+                                m_ComboAirplanes.getSelectionModel().select(ap.getId());
+                            }
+                        }
+                        break;
+                    }
+                }
+            });
+
+            m_BtnSend.setOnMouseClicked(event -> {
+                String text = m_TextInput.getText();
+                if (!StringUtils.isNullOrWhitespace(text)) {
+                    String apId = m_ComboAirplanes.getSelectionModel().getSelectedItem();
+                    if (!StringUtils.isNullOrEmpty(apId)) {
+                        m_Connection.send(new Message(Message.HINT_COMMAND, text, null, apId).toString());
+                        m_TextInput.clear();
+                        m_TextArea.appendText(String.format("%s\n", text));
+                    }
+                }
+            });
         }
 
         private void update() {
@@ -125,9 +235,26 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
             m_Gfx.clearRect(0.0, 0.0, m_Viewport.Width, m_Viewport.Height);
 
+            int flags = 0;
             for (IAirplane ap : m_Airplanes) {
-                ap.draw(m_Gfx, m_Viewport);
+                if (m_Collisions.containsKey(ap.getId()))
+                    flags |= m_Collisions.get(ap.getId());
+
+                if (m_LockedAirplanes.contains(ap.getId()))
+                    flags |= Airplane.FLAG_HIGHLIGHTED;
+
+                Airplane.draw(m_Gfx, ap, flags);
             }
+        }
+
+        @Override
+        public void onChanged(final Change<? extends String> c) {
+            Platform.runLater(() -> {
+                while (c.next()) {
+                    if (c.wasRemoved()) m_ComboAirplanes.getItems().removeAll(c.getRemoved());
+                    if (c.wasAdded()) m_ComboAirplanes.getItems().addAll(c.getAddedSubList());
+                }
+            });
         }
     }
 

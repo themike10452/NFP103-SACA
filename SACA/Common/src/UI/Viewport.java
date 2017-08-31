@@ -8,17 +8,15 @@ public class Viewport {
     public float Width;
     public float Height;
     public float Padding;
-    public float Scale;
 
     public Viewport(float width, float height) {
-        this(width, height, 0, 0);
+        this(width, height, 0);
     }
 
-    public Viewport(float width, float height, float padding, float scale) {
+    public Viewport(float width, float height, float padding) {
         Width = width;
         Height = height;
         Padding = padding;
-        Scale = scale;
     }
 
 }

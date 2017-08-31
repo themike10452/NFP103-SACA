@@ -1,10 +1,11 @@
 import Entities.Airplane;
 import FMath.FMath;
-import FMath.Rotator;
 import FMath.Vector3;
+import Net.TcpConnection;
 import UI.Viewport;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
@@ -14,13 +15,14 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
+import javafx.scene.control.TextArea;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -28,10 +30,11 @@ import java.io.IOException;
 /**
  * Created by Mike on 7/12/2017.
  */
-public class Pilot extends Application implements EventHandler<KeyEvent> {
+public class Pilot extends Application implements EventHandler<KeyEvent>, TcpConnection.EventHandler {
 
     private Airplane m_Airplane;
     private ViewController m_ViewController;
+    private boolean m_IsFlying;
 
     private final AnimationTimer m_AnimationTimer = new AnimationTimer() {
         @Override
@@ -43,6 +46,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
     public Pilot() {
         m_Airplane = new Airplane();
         m_ViewController = new ViewController();
+        m_IsFlying = false;
     }
 
     @Override
@@ -65,55 +69,76 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
 
     @Override
     public void stop() throws Exception {
+        m_IsFlying = false;
         m_AnimationTimer.stop();
         m_Airplane.destroy();
+    }
+
+    private void deploy() {
+        if (m_IsFlying) return;
+
+        try {
+            m_Airplane.openConnection();
+            m_Airplane.addConnectionEventHandler(this);
+        }
+        catch (IOException e) {
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Connection problem");
+                alert.setContentText("Failed to establish connection with SACA controller");
+                alert.show();
+            });
+            return;
+        }
+
+        m_Airplane.setSpeed(900.0f);
+
+        m_IsFlying = true;
+        m_Airplane.takeOff();
     }
 
     @Override
     public void handle(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        if (code == KeyCode.A || code == KeyCode.D) {
-            Vector3 dir = m_Airplane.getDirection();
-            float angle = 0;
-
-            if (code == KeyCode.A) {
-                angle = 1;
-            } else if (code == KeyCode.D) {
-                angle = -1;
-            }
-
-            Rotator r = new Rotator(0.0f, 0.0f, angle);
-            Vector3 newDir = r.getRotated(dir).getNormalized();
-            m_Airplane.setDirection(newDir);
+        if (code == KeyCode.ENTER) {
+            deploy();
         }
-        else {
-            if (code == KeyCode.ENTER) {
-                deploy();
-            }
-            else if (code == KeyCode.EQUALS || code == KeyCode.PLUS) {
-                m_Airplane.setSpeed(m_Airplane.getSpeed() + 0.2f);
-            }
-            else if (code == KeyCode.UNDERSCORE || code == KeyCode.MINUS) {
-                m_Airplane.setSpeed(m_Airplane.getSpeed() - 0.2f);
-            }
+        else if (code == KeyCode.A) {
+            m_Airplane.setYaw(m_Airplane.getYaw() + 1.0f);
+        }
+        else if (code == KeyCode.D) {
+            m_Airplane.setYaw(m_Airplane.getYaw() - 1.0f);
+        }
+        else if (code == KeyCode.W) {
+            m_Airplane.setPitch(m_Airplane.getPitch() + 1.0f);
+        }
+        else if (code == KeyCode.S) {
+            m_Airplane.setPitch(m_Airplane.getPitch() - 1.0f);
+        }
+        else if (code == KeyCode.EQUALS || code == KeyCode.PLUS) {
+            m_Airplane.setSpeed(m_Airplane.getSpeed() + 10.0f);
+        }
+        else if (code == KeyCode.UNDERSCORE || code == KeyCode.MINUS) {
+            m_Airplane.setSpeed(m_Airplane.getSpeed() - 10.0f);
         }
     }
 
-    private void deploy() {
-        try {
-            m_Airplane.openConnection();
-        }
-        catch (IOException e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Connection problem");
-            alert.setContentText("Failed to establish connection with SACA controller");
-            alert.show();
-            return;
-        }
+    @Override
+    public void onReceiveMessage(TcpConnection connection, String message) {
+        System.out.println(message);
+    }
 
-        m_Airplane.takeOff();
-        m_AnimationTimer.start();
+    @Override
+    public void onCloseConnection(TcpConnection connection) {
+        if (!m_IsFlying) return;
+
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("SACA Connection");
+            alert.setContentText("Connection lost with SACA Controller");
+            alert.show();
+        });
     }
 
     public class ViewController implements ChangeListener<Number> {
@@ -121,18 +146,18 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
         @FXML
         private Canvas m_Canvas;
         @FXML
-        private Text m_TextVelocity;
-        @FXML
-        private Text m_TextAltitude;
+        private TextArea m_TextArea;
 
         private GraphicsContext m_Gfx;
         private Viewport m_Viewport;
         private Viewport m_AltmViewport;
+        private Viewport m_DashViewport;
         private boolean m_IsReady;
 
         private ViewController() {
             m_Viewport = new Viewport(0, 0);
-            m_AltmViewport = new Viewport(180, 180, 20, 1);
+            m_AltmViewport = new Viewport(150, 150, 10);
+            m_DashViewport = new Viewport(120, 150, 20);
         }
 
         @FXML
@@ -144,29 +169,39 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
 
             //TODO revise this
             m_Canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-                float x = (float) event.getX(), y = (float) event.getY();
-                m_Airplane.getPosition().setX(x).setY(y);
+                if (!m_IsFlying) {
+                    float x = (float) event.getX(),
+                          y = (float) event.getY(),
+                          z = m_Airplane.getAltitude();
+
+                    x /= Constants.Decimals.MAP_SCALE;
+                    y /= Constants.Decimals.MAP_SCALE;
+
+                    m_Airplane.setPosition(new Vector3(x, y, z));
+                }
             });
 
             m_IsReady = true;
+
+            m_AnimationTimer.start();
         }
 
         private void update() {
             if (!m_IsReady) return;
 
-            m_TextVelocity.setText(Float.toString(m_Airplane.getSpeed()));
-            m_TextAltitude.setText(Float.toString(m_Airplane.getPosition().Z));
+            int altitude = (int) FMath.kilometersToFeet(m_Airplane.getAltitude()); // altitude in feet
+            int speed = (int) FMath.kilometersToMiles(m_Airplane.getSpeed()); // speed in mph
 
             m_Gfx.clearRect(0, 0, m_Viewport.Width, m_Viewport.Height);
-            m_Airplane.draw(m_Gfx, m_Viewport);
+
+            Airplane.draw(m_Gfx, m_Airplane, 0);
 
             float halfW = m_AltmViewport.Width / 2;
             float halfH = m_AltmViewport.Height / 2;
 
-            int alt = (int) m_Airplane.getPosition().Z;
-            float altH1 = alt / 10000.0f;
-            float altH2 = alt / 1000.0f;
-            float altH3 = alt / 100.0f;
+            float altH1 = altitude / 10000.0f;
+            float altH2 = altitude / 1000.0f;
+            float altH3 = altitude / 100.0f;
 
             float h1Rot = FMath.clampAngle(360.0f * (altH1 / 10.0f));
             float h2Rot = FMath.clampAngle(360.0f * (altH2 / 10.0f));
@@ -205,6 +240,28 @@ public class Pilot extends Application implements EventHandler<KeyEvent> {
                 m_Gfx.rotate(h3Rot);
                 m_Gfx.translate(-halfW, -halfH);
                 m_Gfx.drawImage(Resources.Images.altimeter_hand3, 0, 0, m_AltmViewport.Width, m_AltmViewport.Height);
+            m_Gfx.restore();
+
+            final float dashOffsetW = altmOffsetW - m_DashViewport.Width;
+            final float dashOffsetH = altmOffsetH + m_DashViewport.Padding;
+            final float rowHeight = 15.0f;
+            final float apSize = 100.0f;
+            final float halfApSize = apSize/2.0f;
+
+            m_Gfx.setFill(Color.WHITE);
+            m_Gfx.setFont(Font.font("Consolas", 16));
+            m_Gfx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
+            m_Gfx.fillText(String.format("%05d MPH", speed), dashOffsetW, dashOffsetH);
+            m_Gfx.fillText(String.format("%05d Feet", altitude), dashOffsetW, dashOffsetH + rowHeight);
+            m_Gfx.fillText(String.format("%02d Degrees", (int)m_Airplane.getPitch()), dashOffsetW, m_Viewport.Height - m_DashViewport.Padding);
+            m_Gfx.setEffect(null);
+
+            m_Gfx.save();
+                m_Gfx.translate(dashOffsetW - 10, dashOffsetH + rowHeight);
+                m_Gfx.translate(halfApSize, halfApSize);
+                m_Gfx.rotate(-m_Airplane.getPitch());
+                m_Gfx.translate(-halfApSize, -halfApSize);
+                m_Gfx.drawImage(Resources.Images.airplane_side, 0, 0, 100, 100);
             m_Gfx.restore();
 
             m_Gfx.setEffect(null);

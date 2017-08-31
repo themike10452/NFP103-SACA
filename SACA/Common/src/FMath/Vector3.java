@@ -122,6 +122,18 @@ public class Vector3 implements Serializable {
         return v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z;
     }
 
+    public static float distance(Vector3 v1, Vector3 v2) {
+        return Vector3.subtract(v1, v2).getLength();
+    }
+
+    public static float xyDistance(Vector3 v1, Vector3 v2) {
+        return Vector3.subtract(new Vector3(v1.X, v1.Y, 0.0f), new Vector3(v2.X, v2.Y, 0.0f)).getLength();
+    }
+
+    public static float zDistance(Vector3 v1, Vector3 v2) {
+        return Math.abs(v1.Z - v2.Z);
+    }
+
     public static Vector3 fromString(String str) {
         Pattern p = Pattern.compile("vec3::<(-?\\d+(?:\\.\\d+)?);(-?\\d+(?:\\.\\d+)?);(-?\\d+(?:\\.\\d+)?)>");
         Matcher m = p.matcher(str);

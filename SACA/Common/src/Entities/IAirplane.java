@@ -1,36 +1,50 @@
 package Entities;
 
+import FMath.Ray;
 import FMath.Vector3;
-import UI.Viewport;
-import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.shape.Rectangle;
 
 /**
  * Created by Mike on 7/27/2017.
  */
 public interface IAirplane {
 
-    Airplane setPosition(Vector3 position);
+    IAirplane setPosition(Vector3 position);
 
-    Airplane setDirection(Vector3 direction);
+    IAirplane setSpeed(float speed);
 
-    Airplane setSpeed(float speed);
+    IAirplane setAltitude(float altitude);
 
-    Airplane setAltitude(float altitude);
+    IAirplane setPitch(float pitch);
+
+    IAirplane setYaw(float yaw);
+
+    IAirplane setRoll(float roll);
 
     String getId();
 
     Vector3 getPosition();
 
+    Vector3 getXyPosition();
+
     Vector3 getDirection();
+
+    Ray getRay();
 
     float getSpeed();
 
     float getAltitude();
 
-    public boolean hit(double x, double y);
+    float getPitch();
+
+    float getYaw();
+
+    float getRoll();
+
+    Rectangle getBoundsRect();
+
+    boolean hit(double x, double y);
 
     String toString();
-
-    public void draw(GraphicsContext ctx, Viewport viewport);
 
 }
