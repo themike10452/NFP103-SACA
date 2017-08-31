@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import static Entities.Airplane.FLAG_DISP_HIGHLIGHTED;
+
 /**
  * Created by Mike on 7/6/2017.
  */
@@ -70,6 +72,7 @@ public class SACAController extends Application implements Runnable {
         while (m_IsRunning) {
             synchronized (m_Mutex) {
                 m_CollDetect.update();
+                m_Host.update();
                 m_Host.broadcastUpdates();
             }
 
@@ -232,6 +235,17 @@ public class SACAController extends Application implements Runnable {
             m_Connections.clear();
         }
 
+        private void update() {
+            // update display states
+            for(IAirplane ap : m_Airplanes.values()) {
+                if (m_CommandConsoles.containsKey(ap.getId()))
+                    ap.setDispState(FLAG_DISP_HIGHLIGHTED);
+                else
+                    ap.setDispState(0);
+                System.out.println(ap.getDispState());
+            }
+        }
+
         private void broadcastUpdates() {
             synchronized (m_Mutex) {
                 final StringBuilder sb = new StringBuilder();
@@ -257,16 +271,19 @@ public class SACAController extends Application implements Runnable {
         private static final float FATAL_DISTANCE                  = 0.05f;    // km (equiv to 50 meters)
 
         private void update() {
-            final HashMap<String, Integer> detections = new HashMap<>();
+            // clear states
+            for (IAirplane ap : m_Host.m_Airplanes.values())
+                ap.setCdState(0);
 
-            int flag = 0;
+            // update states
             for (IAirplane target : m_Host.m_Airplanes.values()) {
                 final Ray ray1 = target.getRay();
 
                 for (IAirplane other : m_Host.m_Airplanes.values()) {
-                    if (target == other || // skip collision test with self
-                        detections.containsKey(String.format("%s;%s", target.getId(), other.getId()))) // skip test if already detected
+                    if (target == other) // skip collision test with self
                         continue;
+
+                    int flag = 0;
 
                     final Vector3 pos1 = target.getPosition();
                     final Vector3 pos2 = other.getPosition();
@@ -277,7 +294,7 @@ public class SACAController extends Application implements Runnable {
 
                     if (posXyDistance <= HORIZONTAL_DISTURBANCE_DISTANCE &&
                         posZDistance <= VERTICAL_DISTURBANCE_DISTANCE)
-                        flag = Airplane.FLAG_WARN;
+                        flag = Airplane.FLAG_CD_WARN;
 
                     final Ray ray2 = other.getRay();
 
@@ -300,50 +317,42 @@ public class SACAController extends Application implements Runnable {
                         willCross = dot1 > 0 && dot2 > 0;
                     }
 
-                    if (!willCross)
-                        continue;
+                    if (willCross) {
+                        final float pathXyDistance = Vector3.xyDistance(r1Cp, r2Cp);
+                        final float pathZDistance = Vector3.zDistance(r1Cp, r2Cp);
 
-                    final float pathXyDistance = Vector3.xyDistance(r1Cp, r2Cp);
-                    final float pathZDistance = Vector3.zDistance(r1Cp, r2Cp);
+                        if (flag == Airplane.FLAG_CD_WARN) {
+                            if (pathXyDistance <= HORIZONTAL_PANIC_DISTANCE &&
+                                    pathZDistance <= VERTICAL_PANIC_DISTANCE)
+                                flag = Airplane.FLAG_CD_PANIC;
+                        }
+                        else {
+                            final boolean notice = posZDistance <= VERTICAL_NOTICE_DISTANCE && posXyDistance <= HORIZONTAL_NOTICE_DISTANCE;
 
-                    if (flag == Airplane.FLAG_WARN) {
-                        if (pathXyDistance <= HORIZONTAL_PANIC_DISTANCE &&
-                            pathZDistance <= VERTICAL_PANIC_DISTANCE)
-                            flag = Airplane.FLAG_PANIC;
-                    }
-                    else {
-                        final boolean notice = posZDistance <= VERTICAL_NOTICE_DISTANCE && posXyDistance <= HORIZONTAL_NOTICE_DISTANCE;
-
-                        if (notice) {
-                            if (posZDistance <= 0.1524) { // same vertical flight level
-                                if (pathXyDistance < HORIZONTAL_DISTURBANCE_DISTANCE) {
-                                    flag = Airplane.FLAG_WARN;
+                            if (notice) {
+                                if (posZDistance <= 0.1524) { // same vertical flight level
+                                    if (pathXyDistance < HORIZONTAL_DISTURBANCE_DISTANCE) {
+                                        flag = Airplane.FLAG_CD_WARN;
+                                    }
                                 }
-                            }
-                            else {
-                                if (pathZDistance < VERTICAL_DISTURBANCE_DISTANCE) {
-                                    flag = Airplane.FLAG_WARN;
+                                else {
+                                    if (pathZDistance < VERTICAL_DISTURBANCE_DISTANCE) {
+                                        flag = Airplane.FLAG_CD_WARN;
+                                    }
                                 }
                             }
                         }
                     }
 
-                    if (flag != 0) {
-                        detections.put(String.format("%s;%s", other.getId(), target.getId()), flag);
-                    }
-
                     if (posDistance < FATAL_DISTANCE) {
                         //todo
                     }
+
+                    if (flag > target.getCdState()) {
+                        target.setCdState(flag);
+                    }
                 }
             }
-
-            final String collisionList = detections.keySet()
-                    .stream()
-                    .map(k -> String.format("%s;%d", k, detections.get(k)))
-                    .reduce("", (s1, s2) -> String.join("|", s1, s2));
-
-            m_Host.m_Monitors.forEach(m -> m.send(new Message(Message.HINT_COLLISION_DETECTION_LIST, collisionList).toString()));
         }
 
     }

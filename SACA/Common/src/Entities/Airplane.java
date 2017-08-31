@@ -6,7 +6,6 @@ import FMath.Rotator;
 import FMath.Vector3;
 import Net.TcpConnection;
 import Utils.Chrono;
-import Utils.RuntimeUtils;
 import Utils.StringUtils;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
@@ -30,11 +29,18 @@ import static Constants.Decimals.MAP_SCALE;
  */
 public class Airplane implements IAirplane {
 
-    public static final int FLAG_WARN   = 1 << 0;
-    public static final int FLAG_PANIC  = 1 << 1;
-    public static final int FLAG_HIGHLIGHTED  = 1 << 2;
+    // collision detection flags
+    public static final int FLAG_CD_WARN  = 0x01;
+    public static final int FLAG_CD_PANIC = 0x02;
 
-    private static final String RegexPattern = "pln::<([^;]+);([^;]+);(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+)?)>";
+    // display flags
+    public static final int FLAG_DISP_HIGHLIGHTED = 0x04;
+
+    // masks
+    public static final int CD_MASK = 0x03;
+    public static final int DISP_MASK = 0x04;
+
+    private static final String RegexPattern = "pln::<([^;]+);([^;]+);(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+));(\\d+(?:\\.\\d+)?);(\\d+)>";
 
     private Vector3 m_Position;
     private Vector3 m_Direction;
@@ -45,6 +51,7 @@ public class Airplane implements IAirplane {
     private float m_Speed;
 
     private String m_Id;
+    private int Flags;
     private boolean m_IsFlying;
 
     private TcpConnection m_Connection;
@@ -89,13 +96,18 @@ public class Airplane implements IAirplane {
         updateDirection();
     }
 
-    private Airplane(String id) {
-        this();
-        m_Id = id;
+    private Airplane setId(String id) {
+        this.m_Id = id;
+        return this;
+    }
+
+    private Airplane setFlags(int flags) {
+        this.Flags = flags;
+        return this;
     }
 
     @Override
-    public Airplane setPosition(Vector3 position) {
+    public IAirplane setPosition(Vector3 position) {
         m_Position.setX(position.X);
         m_Position.setY(position.Y);
         setAltitude(position.Z);
@@ -104,13 +116,13 @@ public class Airplane implements IAirplane {
     }
 
     @Override
-    public Airplane setSpeed(float speed) {
+    public IAirplane setSpeed(float speed) {
         m_Speed = Math.max(0.1f, speed);
         return this;
     }
 
     @Override
-    public Airplane setAltitude(float altitude) {
+    public IAirplane setAltitude(float altitude) {
         m_Position.Z = Math.max(0.0f, altitude);
         return this;
     }
@@ -147,6 +159,18 @@ public class Airplane implements IAirplane {
 
         m_Roll = roll;
         updateDirection();
+        return this;
+    }
+
+    @Override
+    public IAirplane setCdState(int state) {
+        this.Flags = (this.Flags & ~CD_MASK) | (state & CD_MASK);
+        return this;
+    }
+
+    @Override
+    public IAirplane setDispState(int state) {
+        this.Flags = (this.Flags & ~DISP_MASK) | (state & DISP_MASK);
         return this;
     }
 
@@ -198,6 +222,16 @@ public class Airplane implements IAirplane {
     @Override
     public float getRoll() {
         return m_Roll;
+    }
+
+    @Override
+    public int getCdState() {
+        return this.Flags & CD_MASK;
+    }
+
+    @Override
+    public int getDispState() {
+        return this.Flags & DISP_MASK;
     }
 
     @Override
@@ -283,30 +317,33 @@ public class Airplane implements IAirplane {
 
     @Override
     public String toString() {
-        return String.format("pln::<%s;%s;%f;%f;%f;%f>",
+        return String.format("pln::<%s;%s;%f;%f;%f;%f;%d>",
                 m_Id,
                 StringUtils.toBase64(m_Position.toString()),
                 m_Roll,
                 m_Pitch,
                 m_Yaw,
-                m_Speed
+                m_Speed,
+                Flags
         );
     }
 
-    public static void draw(GraphicsContext ctx, IAirplane airplane, int flags) {
+    public static void draw(GraphicsContext ctx, IAirplane airplane) {
         final Vector3 direction = airplane.getDirection();
         final String apId = airplane.getId();
         final Rectangle rect = airplane.getBoundsRect();
 
         final Image img;
-        if (RuntimeUtils.isFlagSet(flags, FLAG_PANIC)) {
-            img = Resources.Images.airplane_danger;
-        }
-        else if (RuntimeUtils.isFlagSet(flags, FLAG_WARN)) {
-            img = Resources.Images.airplane_warn;
-        }
-        else {
-            img = Resources.Images.airplane;
+        switch (airplane.getCdState()) {
+            case FLAG_CD_PANIC:
+                img = Resources.Images.airplane_danger;
+                break;
+            case FLAG_CD_WARN:
+                img = Resources.Images.airplane_warn;
+                break;
+            default:
+                img = Resources.Images.airplane;
+                break;
         }
 
         final double xyRotAngle = Math.toDegrees(Math.atan2(direction.Y, direction.X));
@@ -325,7 +362,7 @@ public class Airplane implements IAirplane {
             ctx.rotate(xyRotAngle);
             ctx.translate(-rect.getWidth() / 2, -rect.getHeight() / 2);
 
-            final Color shadowColor = RuntimeUtils.isFlagSet(flags, FLAG_HIGHLIGHTED) ? Color.YELLOW : Color.BLACK;
+            final Color shadowColor = (airplane.getDispState() == FLAG_DISP_HIGHLIGHTED) ? Color.YELLOW : Color.BLACK;
 
             ctx.setEffect(new DropShadow(3.0, 0.0, 0.0, shadowColor));
             ctx.drawImage(img, 0, 0, rect.getWidth(), rect.getHeight());
@@ -338,7 +375,9 @@ public class Airplane implements IAirplane {
         Matcher m = p.matcher(str);
 
         if (m.matches()) {
-            return (Airplane) new Airplane(m.group(1))
+            return (Airplane) new Airplane()
+                    .setId(m.group(1))
+                    .setFlags(Integer.parseInt(m.group(7)))
                     .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
                     .setRoll(Float.parseFloat(m.group(3)))
                     .setPitch(Float.parseFloat(m.group(4)))
@@ -357,7 +396,9 @@ public class Airplane implements IAirplane {
         List<Airplane> result = new ArrayList<>();
 
         while (m.find()) {
-            Airplane airplane = (Airplane) new Airplane(m.group(1))
+            Airplane airplane = (Airplane) new Airplane()
+                    .setId(m.group(1))
+                    .setFlags(Integer.parseInt(m.group(7)))
                     .setPosition(Vector3.fromString(StringUtils.fromBase64(m.group(2))))
                     .setRoll(Float.parseFloat(m.group(3)))
                     .setPitch(Float.parseFloat(m.group(4)))

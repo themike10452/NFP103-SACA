@@ -21,6 +21,10 @@ public interface IAirplane {
 
     IAirplane setRoll(float roll);
 
+    IAirplane setCdState(int state);
+
+    IAirplane setDispState(int state);
+
     String getId();
 
     Vector3 getPosition();
@@ -40,6 +44,10 @@ public interface IAirplane {
     float getYaw();
 
     float getRoll();
+
+    int getCdState();
+
+    int getDispState();
 
     Rectangle getBoundsRect();
 

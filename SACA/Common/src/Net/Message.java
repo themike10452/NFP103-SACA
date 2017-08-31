@@ -7,7 +7,6 @@ import java.util.regex.Pattern;
 
 public class Message {
 
-    public static final int HINT_NONE    = 0;
     public static final int HINT_COMMAND = 1 << 0;
     public static final int HINT_LOCK    = 1 << 1;
     public static final int HINT_RELEASE = 1 << 2;
@@ -15,7 +14,6 @@ public class Message {
     public static final int HINT_LOCK_ACK = 1 << 4;
     public static final int HINT_RELEASE_ACK = 1 << 5;
     public static final int HINT_AIRPLANE_LIST = 1 << 10;
-    public static final int HINT_COLLISION_DETECTION_LIST = 1 << 11;
 
     public int Hint;
     public String Data;

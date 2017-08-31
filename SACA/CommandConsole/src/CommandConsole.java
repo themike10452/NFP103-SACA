@@ -25,8 +25,6 @@ import javafx.stage.Stage;
 
 import java.net.ConnectException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -45,7 +43,6 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
     private TcpConnection m_Connection;
     private final List<IAirplane> m_Airplanes;
     private final ObservableList<String> m_LockedAirplanes;
-    private final HashMap<String, Integer> m_Collisions;
     private final ViewController m_ViewController;
     private boolean m_IsRunning;
 
@@ -61,7 +58,6 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
     public CommandConsole() {
         m_Airplanes = new ArrayList<>();
         m_LockedAirplanes = FXCollections.observableArrayList();
-        m_Collisions = new HashMap<>();
         m_ViewController = new ViewController();
         m_IsRunning = false;
     }
@@ -124,17 +120,6 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
                         alert.setTitle("Controller message");
                         alert.setContentText(msg.Data);
                         alert.show();
-                    });
-                }
-                else if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_COLLISION_DETECTION_LIST)) {
-                    m_Collisions.clear();
-                    Arrays.stream(msg.Data.split("\\|")).distinct().forEach(entry -> {
-                        String parts[] = entry.split(";");
-                        if (parts.length == 3) {
-                            int existing = m_Collisions.getOrDefault(parts[0], 0);
-                            m_Collisions.put(parts[0], existing | Integer.parseInt(parts[2]));
-                            m_Collisions.put(parts[1], existing | Integer.parseInt(parts[2]));
-                        }
                     });
                 }
                 else if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_AIRPLANE_LIST)) {
@@ -235,15 +220,8 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
             m_Gfx.clearRect(0.0, 0.0, m_Viewport.Width, m_Viewport.Height);
 
-            int flags = 0;
             for (IAirplane ap : m_Airplanes) {
-                if (m_Collisions.containsKey(ap.getId()))
-                    flags |= m_Collisions.get(ap.getId());
-
-                if (m_LockedAirplanes.contains(ap.getId()))
-                    flags |= Airplane.FLAG_HIGHLIGHTED;
-
-                Airplane.draw(m_Gfx, ap, flags);
+                Airplane.draw(m_Gfx, ap);
             }
         }
 

@@ -194,7 +194,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
 
             m_Gfx.clearRect(0, 0, m_Viewport.Width, m_Viewport.Height);
 
-            Airplane.draw(m_Gfx, m_Airplane, 0);
+            Airplane.draw(m_Gfx, m_Airplane);
 
             float halfW = m_AltmViewport.Width / 2;
             float halfH = m_AltmViewport.Height / 2;
