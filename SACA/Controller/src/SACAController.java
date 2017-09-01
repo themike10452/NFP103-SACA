@@ -199,6 +199,7 @@ public class SACAController extends Application implements Runnable {
             public void onCloseConnection(TcpConnection connection) {
                 synchronized (m_Mutex) {
                     m_Monitors.remove(connection);
+                    m_CommandConsoles.values().remove(connection);
                 }
             }
         };
@@ -242,7 +243,6 @@ public class SACAController extends Application implements Runnable {
                     ap.setDispState(FLAG_DISP_HIGHLIGHTED);
                 else
                     ap.setDispState(0);
-                System.out.println(ap.getDispState());
             }
         }
 
