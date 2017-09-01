@@ -127,6 +127,8 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
                     m_Airplanes.addAll(Airplane.fromStringMultiple(msg.Data));
                     // sort by altitude in desc order
                     m_Airplanes.sort((a1, a2) -> (int) ((a1.getAltitude() - a2.getAltitude()) * 1000));
+                    // unlock disconnected airplanes
+                    m_LockedAirplanes.removeIf(id -> m_Airplanes.stream().noneMatch(ap -> id.equals(ap.getId())));
                 }
 
                 if (RuntimeUtils.isFlagSet(msg.Hint, Message.HINT_LOCK_ACK)) {
