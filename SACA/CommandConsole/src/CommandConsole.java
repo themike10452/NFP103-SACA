@@ -1,6 +1,7 @@
 import Constants.Integers;
 import Entities.Airplane;
 import Entities.IAirplane;
+import FMath.FMath;
 import Net.Message;
 import Net.TcpConnection;
 import UI.Viewport;
@@ -18,9 +19,12 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.net.ConnectException;
@@ -170,11 +174,17 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
         GraphicsContext m_Gfx;
         Viewport m_Viewport;
+        Viewport m_ChildViewport;
+        float cursorX;
+        float cursorY;
         boolean m_IsReady;
 
         private ViewController() {
             m_Viewport = new Viewport(0, 0, CanvasPadding);
+            m_ChildViewport = new Viewport(200, 50, 0);
             m_IsReady = false;
+            cursorX = -1;
+            cursorY = -1;
         }
 
         @FXML
@@ -204,6 +214,11 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
                 }
             });
 
+            m_Canvas.addEventHandler(MouseEvent.MOUSE_MOVED, event -> {
+                cursorX = (float) event.getX();
+                cursorY = (float) event.getY();
+            });
+
             m_BtnSend.setOnMouseClicked(event -> sendMessage());
             m_TextInput.setOnAction(event -> sendMessage());
         }
@@ -215,7 +230,36 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
 
             for (IAirplane ap : m_Airplanes) {
                 Airplane.draw(m_Gfx, ap);
+                if (ap.getBoundsRect().contains(cursorX, cursorY)) {
+                    drawDetails(ap);
+                }
             }
+        }
+
+        private void drawDetails(IAirplane ap) {
+            int altitude = (int) FMath.kilometersToFeet(ap.getAltitude()); // altitude in feet
+            int speed = (int) FMath.kilometersToMiles(ap.getSpeed()); // speed in mph
+
+            final float vMargin = m_Viewport.Width - m_ChildViewport.Width + m_ChildViewport.Padding;
+            final float rowHeight = 15.0f;
+            final float apSize = 50.0f;
+            final float halfApSize = apSize/2.0f;
+
+            m_Gfx.setFill(Color.WHITE);
+            m_Gfx.setFont(Font.font("Consolas", 14));
+            m_Gfx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
+            m_Gfx.fillText(String.format("%12s: %05d MPH", "Speed", speed), vMargin, rowHeight);
+            m_Gfx.fillText(String.format("%12s: %05d Feet", "Altitude", altitude), vMargin, 2*rowHeight);
+            m_Gfx.fillText(String.format("%12s: %02d Degrees", "Nose Pitch", (int)ap.getPitch()), vMargin, 3*rowHeight);
+            m_Gfx.setEffect(null);
+
+            m_Gfx.save();
+                m_Gfx.translate(vMargin + 120, 3*rowHeight);
+                m_Gfx.translate(halfApSize, halfApSize);
+                m_Gfx.rotate(-ap.getPitch());
+                m_Gfx.translate(-halfApSize, -halfApSize);
+                m_Gfx.drawImage(Resources.Images.airplane_side, 0, 0, apSize, apSize);
+            m_Gfx.restore();
         }
 
         private void sendMessage() {
