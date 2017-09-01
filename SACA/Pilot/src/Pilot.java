@@ -168,7 +168,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
         private ViewController() {
             m_Viewport = new Viewport(0, 0);
             m_AltmViewport = new Viewport(150, 150, 10);
-            m_DashViewport = new Viewport(120, 150, 20);
+            m_DashViewport = new Viewport(200, 75, 0);
         }
 
         @FXML
@@ -254,25 +254,25 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
             m_Gfx.restore();
 
             final float dashOffsetW = altmOffsetW - m_DashViewport.Width;
-            final float dashOffsetH = altmOffsetH + m_DashViewport.Padding;
+            final float dashOffsetH = m_Viewport.Height - m_DashViewport.Height + m_DashViewport.Padding;
             final float rowHeight = 15.0f;
-            final float apSize = 100.0f;
+            final float apSize = 50.0f;
             final float halfApSize = apSize/2.0f;
 
             m_Gfx.setFill(Color.WHITE);
-            m_Gfx.setFont(Font.font("Consolas", 16));
+            m_Gfx.setFont(Font.font("Consolas", 14));
             m_Gfx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
-            m_Gfx.fillText(String.format("%05d MPH", speed), dashOffsetW, dashOffsetH);
-            m_Gfx.fillText(String.format("%05d Feet", altitude), dashOffsetW, dashOffsetH + rowHeight);
-            m_Gfx.fillText(String.format("%02d Degrees", (int)m_Airplane.getPitch()), dashOffsetW, m_Viewport.Height - m_DashViewport.Padding);
+            m_Gfx.fillText(String.format("%12s: %05d MPH", "Speed", speed), dashOffsetW, dashOffsetH);
+            m_Gfx.fillText(String.format("%12s: %05d Feet", "Altitude", altitude), dashOffsetW, dashOffsetH + rowHeight);
+            m_Gfx.fillText(String.format("%12s: %02d Degrees", "Nose Pitch", (int)m_Airplane.getPitch()), dashOffsetW, dashOffsetH + 2*rowHeight);
             m_Gfx.setEffect(null);
 
             m_Gfx.save();
-                m_Gfx.translate(dashOffsetW - 10, dashOffsetH + rowHeight);
+                m_Gfx.translate(dashOffsetW + 120, dashOffsetH + 2*rowHeight);
                 m_Gfx.translate(halfApSize, halfApSize);
                 m_Gfx.rotate(-m_Airplane.getPitch());
                 m_Gfx.translate(-halfApSize, -halfApSize);
-                m_Gfx.drawImage(Resources.Images.airplane_side, 0, 0, 100, 100);
+                m_Gfx.drawImage(Resources.Images.airplane_side, 0, 0, apSize, apSize);
             m_Gfx.restore();
 
             m_Gfx.setEffect(null);
