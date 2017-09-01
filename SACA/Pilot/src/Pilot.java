@@ -115,23 +115,23 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
             takeOff();
         }
         else if (code == KeyCode.A) {
-            m_Airplane.setYaw(m_Airplane.getYaw() + 1.0f);
+            m_Airplane.setYaw(m_Airplane.getYaw() + 0.2f);
         }
         else if (code == KeyCode.D) {
-            m_Airplane.setYaw(m_Airplane.getYaw() - 1.0f);
+            m_Airplane.setYaw(m_Airplane.getYaw() - 0.2f);
         }
         else if (m_IsFlying) {
             if (code == KeyCode.W) {
-                m_Airplane.setPitch(m_Airplane.getPitch() + 1.0f);
+                m_Airplane.setPitch(m_Airplane.getPitch() + 0.2f);
             }
             else if (code == KeyCode.S) {
-                m_Airplane.setPitch(m_Airplane.getPitch() - 1.0f);
+                m_Airplane.setPitch(m_Airplane.getPitch() - 0.2f);
             }
             else if (code == KeyCode.EQUALS || code == KeyCode.PLUS) {
-                m_Airplane.setSpeed(m_Airplane.getSpeed() + 10.0f);
+                m_Airplane.setSpeed(m_Airplane.getSpeed() + 5.0f);
             }
             else if (code == KeyCode.UNDERSCORE || code == KeyCode.MINUS) {
-                m_Airplane.setSpeed(m_Airplane.getSpeed() - 10.0f);
+                m_Airplane.setSpeed(m_Airplane.getSpeed() - 5.0f);
             }
         }
     }
