@@ -20,8 +20,7 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static Constants.Decimals.AIRPLANE_MAX_PITCH;
-import static Constants.Decimals.MAP_SCALE;
+import static Constants.Decimals.*;
 
 /**
  * Created by Mike on 7/6/2017.
@@ -112,13 +111,13 @@ public class Airplane implements IAirplane {
 
     @Override
     public IAirplane setSpeed(float speed) {
-        m_Speed = Math.max(0.1f, speed);
+        m_Speed = Math.min(Math.max(0.0f, speed), AIRPLANE_MAX_SPEED);
         return this;
     }
 
     @Override
     public IAirplane setAltitude(float altitude) {
-        m_Position.Z = Math.max(0.0f, altitude);
+        m_Position.Z = Math.min(Math.max(0.0f, altitude), AIRPLANE_MAX_ALT);
         return this;
     }
 
