@@ -5,7 +5,6 @@ import FMath.Ray;
 import FMath.Rotator;
 import FMath.Vector3;
 import Net.TcpConnection;
-import Utils.Chrono;
 import Utils.StringUtils;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.DropShadow;
@@ -60,15 +59,9 @@ public class Airplane implements IAirplane {
     private Thread m_WorkerThread = new Thread() {
         @Override
         public void run() {
-            Chrono chrono = new Chrono();
-            chrono.start();
-
             while (m_IsFlying) {
                 try {
-                    chrono.tick();
-                    update(chrono.delta());
                     sendCoordinates();
-
                     Thread.sleep(500);
                 }
                 catch (InterruptedException ie) {
@@ -86,11 +79,13 @@ public class Airplane implements IAirplane {
         m_Yaw = 0.0f;
         m_Speed = 0.0f;
 
-        m_Id = "AP-" + new Random(System.currentTimeMillis()).nextInt(100);
-        m_IsFlying = false;
+        Random random = new Random(System.currentTimeMillis());
+        m_Id = String.format("AP-%d%d", random.nextInt(10), random.nextInt(10));
 
         m_Rect = new Rectangle(25, 25);
         m_Connection = null;
+
+        m_IsFlying = false;
 
         updateBoundsRect();
         updateDirection();
@@ -295,14 +290,15 @@ public class Airplane implements IAirplane {
         m_Connection = null;
     }
 
-    private void sendCoordinates() {
+    public void sendCoordinates() {
         if (m_Connection == null) return;
 
         m_Connection.send(this.toString());
     }
 
-    private void update(long delta) {
+    public void update(long delta) {
         m_Position.add(Vector3.multiply(m_Direction, (m_Speed / 3600) * (delta / 1000.0f)));
+        setAltitude(getAltitude());
         updateBoundsRect();
     }
 

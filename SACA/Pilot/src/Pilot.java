@@ -3,6 +3,7 @@ import FMath.FMath;
 import FMath.Vector3;
 import Net.TcpConnection;
 import UI.Viewport;
+import Utils.Chrono;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -33,18 +34,28 @@ import java.io.IOException;
 public class Pilot extends Application implements EventHandler<KeyEvent>, TcpConnection.EventHandler {
 
     private Airplane m_Airplane;
+    private Chrono m_Chrono;
     private ViewController m_ViewController;
     private boolean m_IsFlying;
 
     private final AnimationTimer m_AnimationTimer = new AnimationTimer() {
         @Override
+        public void start() {
+            super.start();
+            m_Chrono.start();
+        }
+
+        @Override
         public void handle(long now) {
+            m_Chrono.tick();
+            m_Airplane.update(m_Chrono.delta());
             m_ViewController.update();
         }
     };
 
     public Pilot() {
         m_Airplane = new Airplane();
+        m_Chrono = new Chrono();
         m_ViewController = new ViewController();
         m_IsFlying = false;
     }
@@ -74,7 +85,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
         m_Airplane.destroy();
     }
 
-    private void deploy() {
+    private void takeOff() {
         if (m_IsFlying) return;
 
         try {
@@ -91,10 +102,9 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
             return;
         }
 
-        m_Airplane.setSpeed(900.0f);
-
         m_IsFlying = true;
         m_Airplane.takeOff();
+        m_Airplane.setSpeed(10.0f);
     }
 
     @Override
@@ -102,7 +112,7 @@ public class Pilot extends Application implements EventHandler<KeyEvent>, TcpCon
         KeyCode code = event.getCode();
 
         if (code == KeyCode.ENTER) {
-            deploy();
+            takeOff();
         }
         else if (code == KeyCode.A) {
             m_Airplane.setYaw(m_Airplane.getYaw() + 1.0f);
