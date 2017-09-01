@@ -239,6 +239,8 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
         private void drawDetails(IAirplane ap) {
             int altitude = (int) FMath.kilometersToFeet(ap.getAltitude()); // altitude in feet
             int speed = (int) FMath.kilometersToMiles(ap.getSpeed()); // speed in mph
+            float posX = ap.getPosition().X;
+            float posY = ap.getPosition().Y;
 
             final float vMargin = m_Viewport.Width - m_ChildViewport.Width + m_ChildViewport.Padding;
             final float rowHeight = 15.0f;
@@ -248,13 +250,14 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
             m_Gfx.setFill(Color.WHITE);
             m_Gfx.setFont(Font.font("Consolas", 14));
             m_Gfx.setEffect(new DropShadow(3.0, 0.0, 0.0, Color.BLACK));
-            m_Gfx.fillText(String.format("%12s: %05d MPH", "Speed", speed), vMargin, rowHeight);
-            m_Gfx.fillText(String.format("%12s: %05d Feet", "Altitude", altitude), vMargin, 2*rowHeight);
-            m_Gfx.fillText(String.format("%12s: %02d Degrees", "Nose Pitch", (int)ap.getPitch()), vMargin, 3*rowHeight);
+            m_Gfx.fillText(String.format("%12s: %4.1f,%4.1f", "Coordinates", posX, posY), vMargin, rowHeight);
+            m_Gfx.fillText(String.format("%12s: %05d MPH", "Speed", speed), vMargin, 2*rowHeight);
+            m_Gfx.fillText(String.format("%12s: %05d Feet", "Altitude", altitude), vMargin, 3*rowHeight);
+            m_Gfx.fillText(String.format("%12s: %02d Degrees", "Nose Pitch", (int)ap.getPitch()), vMargin, 4*rowHeight);
             m_Gfx.setEffect(null);
 
             m_Gfx.save();
-                m_Gfx.translate(vMargin + 120, 3*rowHeight);
+                m_Gfx.translate(vMargin + 120, 4*rowHeight);
                 m_Gfx.translate(halfApSize, halfApSize);
                 m_Gfx.rotate(-ap.getPitch());
                 m_Gfx.translate(-halfApSize, -halfApSize);
