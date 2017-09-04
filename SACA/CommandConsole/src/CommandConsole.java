@@ -207,6 +207,7 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
                         else if (event.getButton() == MouseButton.MIDDLE) {
                             if (m_ComboAirplanes.getItems().contains(ap.getId())) {
                                 m_ComboAirplanes.getSelectionModel().select(ap.getId());
+                                m_TextInput.requestFocus();
                             }
                         }
                         break;
