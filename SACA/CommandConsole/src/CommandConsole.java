@@ -1,4 +1,5 @@
 import Constants.Integers;
+import Constants.Strings;
 import Entities.Airplane;
 import Entities.IAirplane;
 import FMath.FMath;
@@ -81,7 +82,7 @@ public class CommandConsole extends Application implements TcpConnection.EventHa
         primaryStage.show();
 
         try {
-            m_Connection = new TcpConnection("127.0.0.1", Integers.MONITORING_PORT);
+            m_Connection = new TcpConnection(Strings.CONTROLLER_IP, Integers.MONITORING_PORT);
             m_Connection.addEventHandler(this);
             m_AnimationTimer.start();
         }

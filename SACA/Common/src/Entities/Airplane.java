@@ -1,5 +1,6 @@
 package Entities;
 
+import Constants.Strings;
 import FMath.FMath;
 import FMath.Ray;
 import FMath.Rotator;
@@ -279,7 +280,7 @@ public class Airplane implements IAirplane {
     public void openConnection() throws IOException {
         if (m_Connection != null) return;
 
-        m_Connection = new TcpConnection("127.0.0.1", Constants.Integers.PILOTING_PORT);
+        m_Connection = new TcpConnection(Strings.CONTROLLER_IP, Constants.Integers.PILOTING_PORT);
     }
 
     public void closeConnection() throws IOException {

@@ -1,3 +1,4 @@
+import Constants.Integers;
 import Entities.Airplane;
 import Entities.IAirplane;
 import FMath.Ray;
@@ -94,7 +95,7 @@ public class SACAController extends Application implements Runnable {
         private final Set<TcpConnection> m_Monitors;
         private boolean m_IsRunning;
 
-        private final TcpListener m_AirplaneListener = new TcpListener(Constants.Integers.PILOTING_PORT) {
+        private final TcpListener m_AirplaneListener = new TcpListener(Integers.PILOTING_PORT) {
             @Override
             public void onReceiveNewConnection(TcpConnection connection) {
             }
@@ -140,7 +141,7 @@ public class SACAController extends Application implements Runnable {
             }
         };
 
-        private final TcpListener m_ConsoleListener = new TcpListener(Constants.Integers.MONITORING_PORT) {
+        private final TcpListener m_ConsoleListener = new TcpListener(Integers.MONITORING_PORT) {
             @Override
             public void onReceiveNewConnection(TcpConnection connection) {
                 m_Monitors.add(connection);
