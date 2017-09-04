@@ -316,6 +316,13 @@ public class SACAController extends Application implements Runnable {
                         // the dot product is positive if the ray direction
                         // and collision position vectors point in the same direction
                         willCross = dot1 > 0 && dot2 > 0;
+
+                        // add the factor of speed
+                        if (willCross) {
+                            final float f1 = Vector3.subtract(r1Cp, pos1).getLength() / Math.max(target.getSpeed(), 0.1f);
+                            final float f2 = Vector3.subtract(r2Cp, pos2).getLength() / Math.max(target.getSpeed(), 0.1f);
+                            willCross = Math.abs(f1 - f2) * 3600 <= 30;
+                        }
                     }
 
                     if (willCross) {
@@ -323,8 +330,7 @@ public class SACAController extends Application implements Runnable {
                         final float pathZDistance = Vector3.zDistance(r1Cp, r2Cp);
 
                         if (flag == Airplane.FLAG_CD_WARN) {
-                            if (pathXyDistance <= HORIZONTAL_PANIC_DISTANCE &&
-                                    pathZDistance <= VERTICAL_PANIC_DISTANCE)
+                            if (pathXyDistance <= HORIZONTAL_PANIC_DISTANCE && pathZDistance <= VERTICAL_PANIC_DISTANCE)
                                 flag = Airplane.FLAG_CD_PANIC;
                         }
                         else {
