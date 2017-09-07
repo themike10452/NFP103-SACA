@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Pilot:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Pilot_jar</output-path>
+    <root id="archive" name="Pilot.jar">
+      <element id="module-output" name="Common" />
+      <element id="module-output" name="Pilot" />
+    </root>
+  </artifact>
+</component>
